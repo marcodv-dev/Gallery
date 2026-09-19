@@ -75,13 +75,15 @@ export default function Spesa() {
               <button className='btn sm sc glass' style={{flex:1}} type="button" onClick={deselectAll}>Annulla selezione</button>
             </div>
           </div>
-          <div className='page-section grid'>
-            <label className='page-title intel' htmlFor=""><span style={{color: selected.size > 0 ? '#0088ff' : undefined}}>{selected.size}</span> selezionati</label>
+          <div className='page-section' style={{flexDirection:'row'}}>
+            <label className='page-title intel' style={{color: selected.size > 0 ? '#0088ff' : undefined}} htmlFor="">{selected.size} selezionati</label>
             <label className='page-title intel' style={{marginLeft:'auto'}} htmlFor="">Totali: {items.length}</label>
+          </div>
+          <div className='page-section grid'>
             {items.map(item => (
               <div className={`card glass spesa ${selected.has(item.id) ? 'selected' : null}`} key={item.id} onClick={() => toggleSelect(item.id)}>
                 <label className='card-title intel'>{item.name}</label>
-                {selected.has(item.id) && <label className='card-subtitle accent'>Selezionato</label>}
+                <label className='card-subtitle accent' style={{height:10}}>{selected.has(item.id)&&'Selezionato'}</label>
               </div>
             ))}
           </div>

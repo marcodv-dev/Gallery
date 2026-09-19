@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { db } from '../db'
 import type { Ingredient, MealTemplate } from '../lib/types'
-import { MagnifyingGlassIcon, XIcon } from '@phosphor-icons/react'
+import { CheckIcon, MagnifyingGlassIcon, XIcon } from '@phosphor-icons/react'
 import { motion } from 'framer-motion'
 
 type Filter = 'all' | 'casa' | 'finiti'
@@ -101,7 +101,9 @@ export default function Dispensa() {
       <div className='page-alimenti'>
         {filtered.map(i => (
           <div className={`page-alimento ${!i.inCasa ? 'finito' : null}`}  style={{justifyContent:'start',gap:5}} key={i.id}>
-            <span className='page-alimento-title' style={{display:'flex',gap:10}}>{i.name}{usedIds.has(i.id) && <span style={{color:'#22c55e',fontSize:12,marginTop:'auto',marginBottom:2,textTransform:'none'}}>Nella dieta</span>}</span>
+            <span className='page-alimento-title disp'>
+              <span>{i.name}</span>
+              {usedIds.has(i.id) && <CheckIcon style={{textTransform:'none',margin:'auto 0',fontSize:20}} className='' color='#22c55e' size={20} weight="regular"/>}</span>
             
             <button className={`btn glass md sc alim ${!i.inCasa ? 'finito' : null}`}  style={{marginLeft:'auto'}} type="button" onClick={() => toggleIngredient(i.id)}>
               {i.inCasa ? 'Presente' : 'Finito'}

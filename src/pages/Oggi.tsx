@@ -68,8 +68,9 @@ export default function Oggi() {
         exit={{ opacity: 1 }}
         transition={{ duration: 0.2, ease: 'easeIn' }}
       >
-        <p className='page-title intel'>Pasti finiti</p>
-        <p className='page-title intel'>Completati oggi {completedToday.length}/{todayOccurrences.length}</p>
+        {todayOccurrences.length==0&&<p className='page-title intel'>Nessun pasto oggi</p>}
+        {todayOccurrences.length!=0&&<><p className='page-title intel'>Pasti finiti</p>
+        <p className='page-title intel'>Completati oggi {completedToday.length}/{todayOccurrences.length}</p></>}
       </motion.section>
     )
   }
