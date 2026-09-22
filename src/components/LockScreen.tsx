@@ -41,21 +41,6 @@ export default function LockScreen({
           </p>
         </div>
 
-        {faceIdAvailable && (
-          <>
-            <button
-              className='btn glass lg sc lock-faceid'
-              type='button'
-              onClick={onFaceIdUnlock}
-              disabled={!!busy}
-            >
-              <FingerprintIcon size={24} weight='regular' />
-              <span>Sblocca con Face ID</span>
-            </button>
-            <div className='lock-divider'><span>oppure</span></div>
-          </>
-        )}
-
         <form onSubmit={handleSubmit} className='lock-form'>
           <div className='page-input'>
             <LockKeyIcon size={24} weight='regular' />
@@ -75,6 +60,17 @@ export default function LockScreen({
             {firstRun ? 'Crea Cassaforte' : 'Sblocca Cassaforte'}
           </button>
         </form>
+
+        <div className='lock-divider'><span>oppure</span></div>
+        <button
+          className={`btn glass lg lock-faceid ${!faceIdAvailable ? 'disabled' : 'sc'}`}
+          type='button'
+          onClick={() => { if (faceIdAvailable && !busy) onFaceIdUnlock() }}
+          disabled={!faceIdAvailable || !!busy}
+        >
+          <FingerprintIcon size={24} weight='regular' />
+          <span>Sblocca con Face ID</span>
+        </button>
 
         <p className='lock-foot'>Nessun dato o password lascia mai questo dispositivo.</p>
       </div>

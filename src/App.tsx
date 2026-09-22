@@ -1,5 +1,12 @@
-import { useEffect, useMemo, useState, type ChangeEvent } from 'react'
-import { ShieldCheckIcon, ArrowsClockwiseIcon } from '@phosphor-icons/react'
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react'
+import {
+  ShieldCheckIcon,
+  ArrowsClockwiseIcon,
+  FingerprintIcon,
+  ArrowLeftIcon,
+  PencilSimpleIcon,
+  TrashSimpleIcon
+} from '@phosphor-icons/react'
 import { db } from './db'
 import {
   randomBytes,
@@ -18,19 +25,18 @@ import {
   disableFaceId,
   unlockWithFaceId
 } from './lib/keyring'
-import type { VaultFile } from './lib/types'
+import { buildFolderPath, collectFolderIds, folderKey, newId, segmentsOf } from './lib/folders'
+import { captureVideoThumbnail } from './lib/thumbnail'
+import type { VaultFile, VaultFolder } from './lib/types'
 import { ToastProvider, useToast } from './context/ToastContext'
 import LockScreen from './components/LockScreen'
 import Toolbar from './components/Toolbar'
 import MediaGrid from './components/MediaGrid'
 import Lightbox from './components/Lightbox'
+import FolderDialog from './components/FolderDialog'
 
 function revokeUrls(map: Record<string, string>) {
   Object.values(map).forEach(url => URL.revokeObjectURL(url))
-}
-
-function generateId(): string {
-  return `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`
 }
 
 function VaultApp() {
@@ -42,7 +48,9 @@ function VaultApp() {
 
   const [vaultKey, setVaultKey] = useState<CryptoKey | null>(null)
   const [vaultFiles, setVaultFiles] = useState<VaultFile[]>([])
+  const [folders, setFolders] = useState<VaultFolder[]>([])
   const [decryptedUrls, setDecryptedUrls] = useState<Record<string, string>>({})
+  const [decryptedThumbs, setDecryptedThumbs] = useState<Record<string, string>>({})
 
   const [faceIdSupported, setFaceIdSupported] = useState(false)
   const [faceIdEnabled, setFaceIdEnabled] = useState(false)
@@ -52,6 +60,10 @@ function VaultApp() {
   const [sortBy, setSortBy] = useState('date-desc')
   const [gridCols, setGridCols] = useState(4)
   const [activeMedia, setActiveMedia] = useState<VaultFile | null>(null)
+
+  const [currentFolderId, setCurrentFolderId] = useState<string | null>(null)
+  const [dialog, setDialog] = useState<{ kind: 'create' | 'rename' | 'delete' } | null>(null)
+  const [deletePreview, setDeletePreview] = useState<{ folderIds: Set<string>; fileCount: number } | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -70,14 +82,22 @@ function VaultApp() {
 
   useEffect(() => {
     return () => {
-      revokeUrls(decryptedUrls)
+      revokeUrls(urlsRef.current)
+      revokeUrls(thumbsRef.current)
     }
-  }, [decryptedUrls])
+  }, [])
+
+  const urlsRef = useRef(decryptedUrls)
+  urlsRef.current = decryptedUrls
+  const thumbsRef = useRef(decryptedThumbs)
+  thumbsRef.current = decryptedThumbs
 
   async function finishUnlock(key: CryptoKey) {
     setBusy('Lettura del vault in corso…')
     const files = await db.files.toArray()
+    const folderList = await db.folders.toArray()
     const newUrls: Record<string, string> = {}
+    const newThumbs: Record<string, string> = {}
 
     for (let i = 0; i < files.length; i++) {
       const file = files[i]
@@ -87,6 +107,10 @@ function VaultApp() {
         newUrls[file.id] = URL.createObjectURL(
           new Blob([plain], { type: file.mimeType || 'application/octet-stream' })
         )
+        if (file.thumbnailData) {
+          const thumb = await decryptBuffer(file.thumbnailData, key)
+          newThumbs[file.id] = URL.createObjectURL(new Blob([thumb], { type: 'image/jpeg' }))
+        }
       } catch (err) {
         console.error('Decifratura fallita per', file.name, err)
         toast.show(`Impossibile decifrare: ${file.name}`)
@@ -95,7 +119,9 @@ function VaultApp() {
 
     setVaultKey(key)
     setVaultFiles(files)
+    setFolders(folderList)
     setDecryptedUrls(newUrls)
+    setDecryptedThumbs(newThumbs)
     setIsUnlocked(true)
     setBusy(null)
   }
@@ -163,11 +189,17 @@ function VaultApp() {
 
   function handleLock() {
     revokeUrls(decryptedUrls)
+    revokeUrls(decryptedThumbs)
     setDecryptedUrls({})
+    setDecryptedThumbs({})
     setVaultFiles([])
+    setFolders([])
     setVaultKey(null)
     setIsUnlocked(false)
     setActiveMedia(null)
+    setCurrentFolderId(null)
+    setDialog(null)
+    setDeletePreview(null)
     setBusy(null)
     setSearchQuery('')
     setTypeFilter('all')
@@ -198,25 +230,71 @@ function VaultApp() {
     const uploadedFiles = Array.from(e.target.files ?? [])
     if (!uploadedFiles.length || !vaultKey) return
 
-    setBusy('Cifratura dei file in corso…')
+    const isDir = !!(e.target as HTMLInputElement).webkitdirectory
+    setBusy(isDir ? 'Cifratura della cartella in corso…' : 'Cifratura dei file in corso…')
     try {
       const newFiles: VaultFile[] = []
+      const newFolders: VaultFolder[] = []
       const newUrls = { ...decryptedUrls }
+      const newThumbs = { ...decryptedThumbs }
+      const created = new Map<string, VaultFolder>()
+      const prefix = buildFolderPath(folders, currentFolderId)
+
+      const findOrCreate = async (parentId: string | null, name: string): Promise<VaultFolder> => {
+        const key = folderKey(parentId, name)
+        const known = created.get(key)
+        if (known) return known
+        const existing = folders.find(f => f.parentId === parentId && f.name === name)
+        if (existing) {
+          created.set(key, existing)
+          return existing
+        }
+        const folder: VaultFolder = { id: newId(), name, parentId, createdAt: Date.now() }
+        await db.folders.add(folder)
+        created.set(key, folder)
+        newFolders.push(folder)
+        return folder
+      }
 
       for (const file of uploadedFiles) {
+        let folderId: string | null = currentFolderId
+        let path: string
+
+        if (isDir) {
+          const dirs = segmentsOf(file.webkitRelativePath).slice(0, -1)
+          let cur = currentFolderId
+          for (const dir of dirs) cur = (await findOrCreate(cur, dir)).id
+          folderId = cur
+          path = prefix ? `${prefix}/${file.webkitRelativePath}` : file.webkitRelativePath
+        } else {
+          path = prefix ? `${prefix}/${file.name}` : file.name
+        }
+
         const arrayBuffer = await file.arrayBuffer()
         const encryptedData = await encryptBuffer(arrayBuffer, vaultKey)
-        const id = generateId()
+        const id = newId()
+        const kind = getFileType(file.name)
 
         const newFile: VaultFile = {
           id,
           name: file.name,
           size: file.size,
-          type: getFileType(file.name),
+          type: kind,
           mimeType: file.type,
-          path: file.webkitRelativePath || file.name,
+          path,
+          folderId,
           createdAt: Date.now(),
           encryptedData
+        }
+
+        if (kind === 'video') {
+          setBusy(`Generazione anteprima: ${file.name}`)
+          const thumb = await captureVideoThumbnail(file)
+          if (thumb) {
+            newFile.thumbnailData = await encryptBuffer(await thumb.arrayBuffer(), vaultKey)
+            newThumbs[id] = URL.createObjectURL(thumb)
+          }
+          setBusy(isDir ? 'Cifratura della cartella in corso…' : 'Cifratura dei file in corso…')
         }
 
         await db.files.add(newFile)
@@ -224,8 +302,10 @@ function VaultApp() {
         newUrls[id] = URL.createObjectURL(new Blob([arrayBuffer], { type: file.type }))
       }
 
+      if (newFolders.length) setFolders(prev => [...prev, ...newFolders])
       setVaultFiles(prev => [...prev, ...newFiles])
       setDecryptedUrls(newUrls)
+      setDecryptedThumbs(newThumbs)
     } catch (err) {
       console.error(err)
       toast.show('Errore durante la cifratura dei file.')
@@ -247,6 +327,14 @@ function VaultApp() {
         }
         return next
       })
+      setDecryptedThumbs(prev => {
+        const next = { ...prev }
+        if (next[file.id]) {
+          URL.revokeObjectURL(next[file.id])
+          delete next[file.id]
+        }
+        return next
+      })
       setActiveMedia(null)
       toast.show('File eliminato dal vault')
     } catch (err) {
@@ -255,15 +343,122 @@ function VaultApp() {
     }
   }
 
-  const processedFiles = useMemo(() => {
-    return vaultFiles
-      .filter(file => {
-        const matchesQuery =
-          file.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          file.path.toLowerCase().includes(searchQuery.toLowerCase())
-        const matchesType = typeFilter === 'all' || file.type === typeFilter
-        return matchesQuery && matchesType
+  const currentFolder = currentFolderId ? folders.find(f => f.id === currentFolderId) ?? null : null
+  const isSubfolder = !!currentFolder
+
+  function handleOpenFolder(id: string) {
+    setActiveMedia(null)
+    setCurrentFolderId(id)
+    setSearchQuery('')
+  }
+
+  function handleBackFolder() {
+    setActiveMedia(null)
+    setCurrentFolderId(currentFolder?.parentId ?? null)
+    setSearchQuery('')
+  }
+
+  async function handleCreateFolder(name: string) {
+    const folder: VaultFolder = { id: newId(), name, parentId: currentFolderId, createdAt: Date.now() }
+    await db.folders.add(folder)
+    setFolders(prev => [...prev, folder])
+    setDialog(null)
+    toast.show('Cartella creata')
+  }
+
+  async function handleRenameFolder(name: string) {
+    if (!currentFolder || !name.trim() || name === currentFolder.name) {
+      setDialog(null)
+      return
+    }
+    try {
+      await db.folders.update(currentFolder.id, { name })
+      setFolders(prev => prev.map(f => (f.id === currentFolder.id ? { ...f, name } : f)))
+      toast.show('Cartella rinominata')
+    } catch (err) {
+      console.error(err)
+      toast.show('Errore durante la rinomina.')
+    }
+    setDialog(null)
+  }
+
+  function openDeleteDialog() {
+    if (!currentFolder) return
+    const folderIds = collectFolderIds(folders, currentFolder)
+    const fileCount = vaultFiles.filter(f => f.folderId && folderIds.has(f.folderId)).length
+    setDeletePreview({ folderIds, fileCount })
+    setDialog({ kind: 'delete' })
+  }
+
+  async function handleDeleteFolder() {
+    const folder = currentFolder
+    const preview = deletePreview
+    if (!folder || !preview) {
+      setDialog(null)
+      return
+    }
+    try {
+      const fileIds = vaultFiles
+        .filter(f => f.folderId && preview.folderIds.has(f.folderId))
+        .map(f => f.id)
+      await db.files.bulkDelete(fileIds)
+      await db.folders.bulkDelete([...preview.folderIds])
+      setVaultFiles(prev => prev.filter(f => !f.folderId || !preview.folderIds.has(f.folderId)))
+      setFolders(prev => prev.filter(f => !preview.folderIds.has(f.id)))
+      setDecryptedUrls(prev => {
+        const next = { ...prev }
+        for (const id of fileIds) {
+          if (next[id]) {
+            URL.revokeObjectURL(next[id])
+            delete next[id]
+          }
+        }
+        return next
       })
+      setDecryptedThumbs(prev => {
+        const next = { ...prev }
+        for (const id of fileIds) {
+          if (next[id]) {
+            URL.revokeObjectURL(next[id])
+            delete next[id]
+          }
+        }
+        return next
+      })
+      setActiveMedia(null)
+      setCurrentFolderId(folder.parentId)
+      toast.show(`Cartella "${folder.name}" eliminata`)
+    } catch (err) {
+      console.error(err)
+      toast.show('Errore durante l\'eliminazione.')
+    }
+    setDialog(null)
+    setDeletePreview(null)
+  }
+
+  function handleDialogConfirm(value?: string) {
+    if (!dialog) return
+    if (dialog.kind === 'delete') {
+      void handleDeleteFolder()
+    } else if (value) {
+      if (dialog.kind === 'create') void handleCreateFolder(value)
+      else void handleRenameFolder(value)
+    }
+  }
+
+  const visibleFolders = useMemo(() => {
+    const q = searchQuery.toLowerCase()
+    return folders
+      .filter(f => f.parentId === currentFolderId && f.name.toLowerCase().includes(q))
+      .sort((a, b) => a.name.localeCompare(b.name))
+  }, [folders, currentFolderId, searchQuery])
+
+  const processedFiles = useMemo(() => {
+    const q = searchQuery.toLowerCase()
+    return vaultFiles
+      .filter(file => (file.folderId ?? null) === currentFolderId)
+      .filter(file => file.name.toLowerCase().includes(q))
+      .filter(file => typeFilter === 'all' || file.type === typeFilter)
       .sort((a, b) => {
         if (sortBy === 'name-asc') return a.name.localeCompare(b.name)
         if (sortBy === 'name-desc') return b.name.localeCompare(a.name)
@@ -272,7 +467,7 @@ function VaultApp() {
         if (sortBy === 'date-asc') return a.createdAt - b.createdAt
         return b.createdAt - a.createdAt
       })
-  }, [vaultFiles, searchQuery, typeFilter, sortBy])
+  }, [vaultFiles, currentFolderId, searchQuery, typeFilter, sortBy])
 
   if (!isUnlocked) {
     return (
@@ -289,14 +484,58 @@ function VaultApp() {
   return (
     <div className='app-root'>
       <header className='header'>
-        <div className='header-div'>
-          <ShieldCheckIcon className='header-logo' size={32} weight='regular' />
-          <h2 className='header-title intel'>Vault</h2>
-          <span className='header-badge intel'>AES-256</span>
-        </div>
-        <button className='btn danger md sc' type='button' onClick={handleLock}>
-          Chiudi Vault
-        </button>
+        {isSubfolder ? (
+          <div className='header-sub'>
+            <button className='btn glass sm circle sc' type='button' onClick={handleBackFolder} title='Indietro'>
+              <ArrowLeftIcon size={20} weight='regular' />
+            </button>
+            <h2 className='header-title intel header-folder-title'>{currentFolder.name}</h2>
+          </div>
+        ) : (
+          <>
+            <div className='header-div'>
+              <ShieldCheckIcon className='header-logo' size={32} weight='regular' />
+              <h2 className='header-title intel'>Vault</h2>
+              <span className='header-badge intel'>AES-256</span>
+            </div>
+            <div className='header-actions' style={{marginLeft:'auto'}}>
+              {isSubfolder && (
+                <>
+                  <button
+                    className='btn glass sm circle sc'
+                    type='button'
+                    onClick={() => setDialog({ kind: 'rename' })}
+                    title='Rinomina cartella'
+                  >
+                    <PencilSimpleIcon size={18} weight='regular' />
+                  </button>
+                  <button
+                    className='btn glass sm circle sc'
+                    type='button'
+                    onClick={openDeleteDialog}
+                    title='Elimina cartella'
+                  >
+                    <TrashSimpleIcon size={18} weight='regular' />
+                  </button>
+                </>
+              )}
+              {faceIdSupported && (
+                <button
+                  className={`btn ${faceIdEnabled ? 'accent' : 'glass'} sm circle sc`}
+                  type='button'
+                  onClick={handleToggleFaceId}
+                  title={faceIdEnabled ? 'Disattiva Face ID' : 'Attiva Face ID'}
+                >
+                  <FingerprintIcon size={20} weight='regular' />
+                </button>
+              )}
+              <button className='btn danger md sc' type='button' onClick={handleLock}>
+                Chiudi
+              </button>
+            </div>
+          </>
+        )}
+        
       </header>
       <div className='statusbar-veil' />
 
@@ -312,10 +551,7 @@ function VaultApp() {
           onGridCols={setGridCols}
           onUploadFiles={handleUpload}
           onUploadFolder={handleUpload}
-          faceIdSupported={faceIdSupported}
-          faceIdEnabled={faceIdEnabled}
-          onToggleFaceId={handleToggleFaceId}
-          onLock={handleLock}
+          onNewFolder={() => setDialog({ kind: 'create' })}
         />
 
         {busy && (
@@ -329,8 +565,13 @@ function VaultApp() {
           <MediaGrid
             files={processedFiles}
             urls={decryptedUrls}
+            thumbs={decryptedThumbs}
+            folders={visibleFolders}
             gridCols={gridCols}
+            emptyTitle={isSubfolder ? 'Cartella vuota' : 'Vault vuoto'}
+            emptyHint={isSubfolder ? 'Usa File o Cartella per aggiungere elementi.' : 'Carica foto o video per popolare la griglia.'}
             onOpen={setActiveMedia}
+            onOpenFolder={handleOpenFolder}
           />
         </section>
       </main>
@@ -339,8 +580,23 @@ function VaultApp() {
         <Lightbox
           file={activeMedia}
           url={decryptedUrls[activeMedia.id]}
+          files={processedFiles}
+          onNavigate={setActiveMedia}
           onClose={() => setActiveMedia(null)}
           onDelete={handleDelete}
+        />
+      )}
+
+      {dialog && (
+        <FolderDialog
+          kind={dialog.kind}
+          folderName={currentFolder?.name}
+          fileCount={deletePreview?.fileCount}
+          onConfirm={handleDialogConfirm}
+          onCancel={() => {
+            setDialog(null)
+            setDeletePreview(null)
+          }}
         />
       )}
     </div>

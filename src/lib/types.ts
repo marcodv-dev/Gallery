@@ -1,5 +1,12 @@
 export type FileKind = 'image' | 'video' | 'document' | 'other'
 
+export interface VaultFolder {
+  id: string
+  name: string
+  parentId: string | null
+  createdAt: number
+}
+
 export interface VaultFile {
   id: string
   name: string
@@ -7,8 +14,10 @@ export interface VaultFile {
   type: FileKind
   mimeType: string
   path: string
+  folderId: string | null
   createdAt: number
   encryptedData: Blob
+  thumbnailData?: Blob
 }
 
 export interface Setting {

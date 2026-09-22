@@ -1,11 +1,5 @@
 import type { ChangeEvent } from 'react'
-import {
-  UploadSimpleIcon,
-  FolderPlusIcon,
-  MagnifyingGlassIcon,
-  FingerprintIcon,
-  LockIcon
-} from '@phosphor-icons/react'
+import { FilePlusIcon, FolderPlusIcon, FolderNotchPlusIcon, MagnifyingGlassIcon } from '@phosphor-icons/react'
 
 interface ToolbarProps {
   searchQuery: string
@@ -18,10 +12,7 @@ interface ToolbarProps {
   onGridCols: (value: number) => void
   onUploadFiles: (e: ChangeEvent<HTMLInputElement>) => void
   onUploadFolder: (e: ChangeEvent<HTMLInputElement>) => void
-  faceIdSupported: boolean
-  faceIdEnabled: boolean
-  onToggleFaceId: () => void
-  onLock: () => void
+  onNewFolder: () => void
 }
 
 export default function Toolbar({
@@ -35,17 +26,14 @@ export default function Toolbar({
   onGridCols,
   onUploadFiles,
   onUploadFolder,
-  faceIdSupported,
-  faceIdEnabled,
-  onToggleFaceId,
-  onLock
+  onNewFolder
 }: ToolbarProps) {
   return (
     <div className='vault-toolbar'>
       <div className='vault-toolbar-row'>
         <label className='btn accent md sc vault-upload'>
-          <UploadSimpleIcon size={20} weight='regular' />
-          <span>Aggiungi File</span>
+          <FilePlusIcon size={20} weight='regular' />
+          <span>File</span>
           <input
             type='file'
             multiple
@@ -53,7 +41,7 @@ export default function Toolbar({
           />
         </label>
 
-        <label className='btn glass md sc vault-upload'>
+        <label className='btn accent md sc vault-upload'>
           <FolderPlusIcon size={20} weight='regular' />
           <span>Cartella</span>
           <input
@@ -63,6 +51,10 @@ export default function Toolbar({
             {...({ webkitdirectory: '', directory: '' } as Record<string, string>)}
           />
         </label>
+
+        <button className='btn glass sm sc circle' type='button' onClick={onNewFolder} title='Nuova cartella'>
+          <FolderNotchPlusIcon size={20} weight='regular' />
+        </button>
       </div>
 
       <div className='vault-toolbar-row vault-toolbar-controls'>
@@ -79,36 +71,42 @@ export default function Toolbar({
 
         <select
           className='vault-select'
+          style={{flex:0.35}}
           value={typeFilter}
           onChange={e => onTypeFilter(e.target.value)}
           aria-label='Filtra per tipo'
         >
-          <option value='all'>Tutti i Tipi</option>
-          <option value='image'>Solo Foto</option>
-          <option value='video'>Solo Video</option>
+          <option value='all'>Tutti</option>
+          <option value='image'>Foto</option>
+          <option value='video'>Video</option>
           <option value='document'>Documenti</option>
           <option value='other'>Altri</option>
         </select>
+      
+      </div>
+      <div className='vault-toolbar-row vault-toolbar-controls'>
 
-        <select
-          className='vault-select'
-          value={sortBy}
-          onChange={e => onSortBy(e.target.value)}
-          aria-label='Ordina'
-        >
-          <option value='date-desc'>Più Recenti</option>
-          <option value='date-asc'>Meno Recenti</option>
-          <option value='name-asc'>Nome (A-Z)</option>
-          <option value='name-desc'>Nome (Z-A)</option>
-          <option value='size-desc'>Dimensione (Grandi)</option>
-          <option value='size-asc'>Dimensione (Piccoli)</option>
-        </select>
+        <div className='vault-select'>
+          <select
+            
+            value={sortBy}
+            onChange={e => onSortBy(e.target.value)}
+            aria-label='Ordina'
+          >
+            <option value='date-desc'>Più Recenti</option>
+            <option value='date-asc'>Meno Recenti</option>
+            <option value='name-asc'>Nome (A-Z)</option>
+            <option value='name-desc'>Nome (Z-A)</option>
+            <option value='size-desc'>Dimensione (Grandi)</option>
+            <option value='size-asc'>Dimensione (Piccoli)</option>
+          </select>
+        </div>
 
         <div className='cols-picker'>
           {[2, 3, 4, 6].map(cols => (
             <button
               key={cols}
-              className={`cols-picker-btn intel${gridCols === cols ? ' active' : ''}`}
+              className={`cols-picker-btn ${gridCols === cols ? ' active' : ''}`}
               type='button'
               onClick={() => onGridCols(cols)}
             >
@@ -116,22 +114,7 @@ export default function Toolbar({
             </button>
           ))}
         </div>
-
-        {faceIdSupported && (
-          <button
-            className={`btn ${faceIdEnabled ? 'accent' : 'glass'} md sc`}
-            type='button'
-            onClick={onToggleFaceId}
-            title={faceIdEnabled ? 'Disattiva Face ID' : 'Attiva Face ID'}
-          >
-            <FingerprintIcon size={20} weight='regular' />
-          </button>
-        )}
-
-        <button className='btn danger md sc' type='button' onClick={onLock}>
-          <LockIcon size={20} weight='regular' />
-          <span>Chiudi Vault</span>
-        </button>
+      
       </div>
     </div>
   )

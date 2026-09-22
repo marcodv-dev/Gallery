@@ -57,8 +57,24 @@ button, input, select, textarea, a, label {
     padding: 0 20px 0;
     padding-top: env(safe-area-inset-top, 0px);
 }
-.header > :last-child{
-    margin-left: auto;
+.header-actions{
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+.header-sub{
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+}
+.header-folder-title{
+    font-size: 1.15rem;
+    max-width: 40vw;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-transform: capitalize;
 }
 .header-div{
     display: flex;
@@ -101,11 +117,12 @@ button, input, select, textarea, a, label {
     padding-bottom: 40px;
 }
 .page.empty{
-    padding-top: 200px;
+    padding: 40px;
     display: flex;
     flex-direction: column;
     gap: 20px;
     align-items: center;
+    text-align: center;
     color: #A6A6A6;
 }
 .title-empty-page{
@@ -188,8 +205,8 @@ button, input, select, textarea, a, label {
     background-origin: border-box;
     background-clip: padding-box, border-box;
     background-image: 
-        linear-gradient(to bottom right, #0062b7dd 30%, #0062b7bb, #0062b7dd 70%), 
-        linear-gradient(to bottom right, #a9d7ff, #0088ff 10% 30%, #0062b7bb, #0088ff 70% 90%, #a9d7ff);
+        linear-gradient(to bottom right, #0062b7dd 30%, #0062b7, #0062b7dd 70%), 
+        linear-gradient(to bottom right, #a9d7ff, #0088ff 10% 30%, #0062b7, #0088ff 70% 90%, #a9d7ff);
     color: #f3f0e7;
     box-shadow:
         0 8px 24px -4px rgba(0, 0, 0, 0.6),
@@ -201,7 +218,7 @@ button, input, select, textarea, a, label {
     background-clip: padding-box, border-box;
     background-image:
         linear-gradient(#0E0F0C, #0E0F0C),
-        linear-gradient(180deg, #ffffff22, #ffffff00);
+        linear-gradient(to bottom right, #ffffffcc, #ffffff33 10% 30%, #ffffff00, #ffffff33 70% 90%, #ffffffcc);
     color: #f3f0e7;
     box-shadow:
         0 8px 24px -4px rgba(0, 0, 0, 0.6),
@@ -273,6 +290,9 @@ button, input, select, textarea, a, label {
 .lock-faceid{
     width: 100%;
 }
+.lock-faceid.disabled{
+    opacity: 0.5;
+}
 .lock-divider{
     width: 100%;
     display: flex;
@@ -308,13 +328,12 @@ button, input, select, textarea, a, label {
 
 /* ---------- Toolbar ---------- */
 .vault-toolbar{
-    position: sticky;
-    top: 0;
     z-index: 50;
     display: flex;
     flex-direction: column;
     gap: 10px;
-    padding: 12px 20px;
+    padding: 20px;
+    padding-top: calc(70px + env(safe-area-inset-top, 0px));
     background: rgba(14, 15, 12, 0.92);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
@@ -333,6 +352,7 @@ button, input, select, textarea, a, label {
     cursor: pointer;
     position: relative;
     overflow: hidden;
+    flex: 1;
 }
 .vault-upload input{
     position: absolute;
@@ -346,6 +366,8 @@ button, input, select, textarea, a, label {
     padding: 8px 16px;
 }
 .vault-select{
+    flex: 1;
+    min-width: 0;
     appearance: none;
     -webkit-appearance: none;
     padding: 9px 16px;
@@ -356,6 +378,17 @@ button, input, select, textarea, a, label {
     font-size: 0.9rem;
     outline: none;
     cursor: pointer;
+    >select{
+        appearance: none;
+        -webkit-appearance: none;
+        border: none;
+        border-radius: 999px;
+        background: linear-gradient(0deg, rgb(32, 32, 32), rgb(42, 42, 42));
+        color: #F3F0E7;
+        font-size: 0.9rem;
+        outline: none;
+        cursor: pointer;
+    }
 }
 .vault-select option{
     background: #181A16;
@@ -364,7 +397,7 @@ button, input, select, textarea, a, label {
 .cols-picker{
     display: flex;
     gap: 2px;
-    padding: 4px;
+    padding: 9px;
     border-radius: 999px;
     background: linear-gradient(0deg, rgb(32, 32, 32), rgb(42, 42, 42));
 }
@@ -372,13 +405,12 @@ button, input, select, textarea, a, label {
     border: none;
     background: none;
     color: #A6A6A6;
-    font-size: 0.75rem;
-    padding: 4px 9px;
+    font-size: 0.9rem;
+    padding: 0 10px;
     border-radius: 999px;
     cursor: pointer;
 }
 .cols-picker-btn.active{
-    background: rgba(0, 136, 255, 0.2);
     color: #0088ff;
     font-weight: 700;
 }
@@ -414,31 +446,23 @@ button, input, select, textarea, a, label {
 }
 .vault-grid{
     display: grid;
-    gap: 0;
+    gap: 0px;
+    padding: 0 5px;
     width: 100%;
 }
 .cols-2 { grid-template-columns: repeat(2, 1fr); }
-.cols-3 { grid-template-columns: repeat(2, 1fr); }
-.cols-4 { grid-template-columns: repeat(2, 1fr); }
-.cols-6 { grid-template-columns: repeat(3, 1fr); }
-
-@media (min-width: 640px) {
-    .cols-3 { grid-template-columns: repeat(3, 1fr); }
-    .cols-4 { grid-template-columns: repeat(3, 1fr); }
-    .cols-6 { grid-template-columns: repeat(4, 1fr); }
-}
-@media (min-width: 768px) {
-    .cols-4 { grid-template-columns: repeat(4, 1fr); }
-    .cols-6 { grid-template-columns: repeat(6, 1fr); }
-}
+.cols-3 { grid-template-columns: repeat(3, 1fr); }
+.cols-4 { grid-template-columns: repeat(4, 1fr); }
+.cols-6 { grid-template-columns: repeat(6, 1fr); }
 
 .vault-tile{
     position: relative;
+    aspect-ratio: 9/16;
     aspect-ratio: 1;
     overflow: hidden;
     background: #181A16;
     cursor: pointer;
-    border: 0.5px solid rgba(14, 15, 12, 0.8);
+    border: 0.5px solid rgb(89, 89, 89);
 }
 .vault-tile img,
 .vault-tile video{
@@ -462,6 +486,71 @@ button, input, select, textarea, a, label {
     align-items: center;
     justify-content: center;
     color: #A6A6A6;
+}
+.vault-video-badge{
+    position: absolute;
+    right: 6px;
+    bottom: 6px;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.55);
+    color: #F3F0E7;
+    pointer-events: none;
+}
+/* ---------- Cartelle (strip sopra la griglia) ---------- */
+.vault-media{
+    display: flex;
+    flex-direction: column;
+}
+.vault-folders{
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+    gap: 10px;
+    padding: 12px;
+}
+.vault-folder{
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 10px 10px;
+    border-radius: 15px;
+    color: #F3F0E7;
+    -webkit-tap-highlight-color: transparent;
+    transition: transform 0.2s ease;
+
+    border: 0.5px solid transparent;
+    background-origin: border-box;
+    background-clip: padding-box, border-box;
+    /* Definisce i due sfondi: il primo per l'interno, il secondo per il bordo */
+    background-image: 
+        linear-gradient(to bottom right, #0f0f0fee 10%, #0f0f0f 30% 70%, #0f0f0fee 90%), 
+        linear-gradient(to bottom right, #ffffffbb, #0000007a 10% 30%, #000000dd, #0000007a 70% 90%, #ffffff77);
+    color: #f3f0e7;
+    box-shadow: 
+        0 8px 24px -4px rgba(0, 0, 0, 0.5),
+        0 0 16px -2px rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+}
+.vault-folder:active{
+    transform: scale(0.96);
+}
+.vault-folder-icon{
+    color: #0088ff;
+}
+.vault-folder-name{
+    font-size: 0.75rem;
+    width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-align: center;
+    text-transform: capitalize;
 }
 .vault-tile-fallback span{
     font-size: 0.7rem;
@@ -491,23 +580,54 @@ button, input, select, textarea, a, label {
     z-index: 1000;
     display: flex;
     flex-direction: column;
-    padding: calc(16px + env(safe-area-inset-top, 0px)) 16px calc(16px + env(safe-area-inset-bottom, 0px));
+    padding: 0;
     background: rgba(14, 15, 12, 0.96);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
     animation: fadeIn 0.2s ease;
+    touch-action: pan-y;
+    user-select: none;
+    -webkit-user-select: none;
+    transition: padding 0.15s ease;
+}
+.lightbox.chrome{
+    padding: 0 16px 0;
 }
 @keyframes fadeIn {
     from { opacity: 0; }
     to { opacity: 1; }
 }
 .lightbox-top{
+    position: absolute;
+    top: calc(16px + env(safe-area-inset-top, 0px));
+    right: 16px;
+    z-index: 2;
     display: flex;
     justify-content: flex-end;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(-14px);
+    transition: opacity 0.25s ease, transform 0.25s ease;
+}
+.lightbox.chrome .lightbox-top{
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(0);
 }
 .lightbox-body{
     flex: 1;
     min-height: 0;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    padding: 12px 0;
+}
+.lightbox.chrome .lightbox-body{
+    flex: 1;
+    min-height: 0;
+    z-index: 1;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -541,18 +661,32 @@ button, input, select, textarea, a, label {
     word-break: break-all;
 }
 .lightbox-info{
+    position: absolute;
+    left: 16px;
+    right: 16px;
+    bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+    z-index: 2;
     display: flex;
     flex-wrap: wrap;
     gap: 12px;
     align-items: center;
     justify-content: space-between;
-    width: 100%;
+    width: auto;
     max-width: 720px;
     margin: 0 auto;
     padding: 14px 18px;
     border-radius: 24px;
     background: rgba(21, 21, 21, 0.9);
     border: 1px solid rgba(255, 255, 255, 0.08);
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(14px);
+    transition: opacity 0.25s ease, transform 0.25s ease;
+}
+.lightbox.chrome .lightbox-info{
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(0);
 }
 .lightbox-info-text{
     min-width: 0;
@@ -579,6 +713,54 @@ button, input, select, textarea, a, label {
     gap: 8px;
     align-items: center;
     flex-shrink: 0;
+}
+
+/* ---------- Modale cartelle ---------- */
+.fmodal{
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    animation: fadeIn 0.2s ease;
+}
+.fmodal-card{
+    width: 100%;
+    max-width: 360px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 20px;
+    border-radius: 20px;
+    background: #151515;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+}
+.fmodal-head{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    color: #F3F0E7;
+}
+.fmodal-input{
+    width: 100%;
+    padding: 12px 16px;
+    margin-bottom: 4px;
+}
+.fmodal-actions{
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-top: 12px;
+}
+.fmodal-text{
+    color: #A6A6A6;
+    font-size: 0.9rem;
+    line-height: 1.5;
 }
 
 /* ---------- Toast ---------- */
