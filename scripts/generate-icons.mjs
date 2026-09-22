@@ -4,7 +4,7 @@ import { join, dirname } from 'path'
 import { fileURLToPath } from 'url'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
-const svgPath = join(__dirname, '..', 'public', 'logo-cicardia.svg')
+const svgPath = join(__dirname, '..', 'public', 'logo-vault.svg')
 const svgBuffer = readFileSync(svgPath)
 
 const icons = [
@@ -25,7 +25,7 @@ for (const icon of icons) {
       bottom: padding,
       left: padding,
       right: padding,
-      background: { r: 18, g: 18, b: 21, alpha: 1 },
+      background: { r: 14, g: 15, b: 12, alpha: 1 },
     })
   }
 

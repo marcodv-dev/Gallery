@@ -1,38 +1,24 @@
-export type MealTipo = 'colazione' | 'merenda1' | 'pranzo' | 'merenda2' | 'cena'
+export type FileKind = 'image' | 'video' | 'document' | 'other'
 
-export const TIPO_ORDER: MealTipo[] = ['colazione', 'merenda1', 'pranzo', 'merenda2', 'cena']
-
-export interface Ingredient {
+export interface VaultFile {
   id: string
   name: string
-  inCasa: boolean
-  esauritoDa: {
-    date: string
-    tipo: MealTipo
-    occurrenceId: string
-  } | null
+  size: number
+  type: FileKind
+  mimeType: string
+  path: string
+  createdAt: number
+  encryptedData: Blob
 }
 
-export interface Recurrence {
-  freq: 'daily' | 'weekly'
-  days: number[]
-  interval?: number
-  startDate: string
-  endDate?: string
+export interface Setting {
+  key: string
+  value: Blob
 }
 
-export interface MealTemplate {
+export interface KeyringRecord {
   id: string
-  title?: string
-  tipo: MealTipo
-  ingredientIds: string[]
-  ricorrenza: Recurrence
-  attivo: boolean
-}
-
-export interface Occurrence {
-  id: string
-  date: string
-  tipo: MealTipo
-  status: 'pending' | 'done'
+  credentialId: Uint8Array
+  prfSalt: Uint8Array
+  wrappedKey: Blob
 }

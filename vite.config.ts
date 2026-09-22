@@ -1,17 +1,29 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
+import { existsSync, readFileSync } from 'node:fs'
+
+const certKey = 'certs/key.pem'
+const certFile = 'certs/cert.pem'
+const hasCerts = existsSync(certKey) && existsSync(certFile)
+
+const https = hasCerts
+  ? {
+      key: readFileSync(certKey),
+      cert: readFileSync(certFile)
+    }
+  : undefined
 
 export default defineConfig({
   plugins: [
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['logo-cicardia.svg'],
+      includeAssets: ['logo-vault.svg'],
       manifest: {
-        name: 'Cicardia',
-        short_name: 'Cicardia',
-        description: 'Dieta + Dispensa + Spesa — tutto offline',
+        name: 'Zero-Knowledge Vault',
+        short_name: 'Vault',
+        description: 'Foto, video e documenti cifrati in locale con AES-256-GCM — nessun dato lascia il dispositivo',
         lang: 'it',
         start_url: '/',
         display: 'standalone',
@@ -41,5 +53,13 @@ export default defineConfig({
         cleanupOutdatedCaches: true
       }
     })
-  ]
+  ],
+  server: {
+    host: true,
+    ...(https ? { https } : {})
+  },
+  preview: {
+    host: true,
+    ...(https ? { https } : {})
+  }
 })

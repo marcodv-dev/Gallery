@@ -1,5 +1,5 @@
 {
-  "name": "template-pwa-moderna",
+  "name": "zero-knowledge-vault",
   "private": true,
   "version": "0.0.1",
   "type": "module",
@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
+    "certs": "node scripts/dev-certs.mjs",
     "generate-icons": "node scripts/generate-icons.mjs"
   },
   "devDependencies": {
@@ -22,9 +23,7 @@
   "dependencies": {
     "@phosphor-icons/react": "^2.1.10",
     "dexie": "^4.4.6",
-    "framer-motion": "^13.2.0",
     "react": "^19.2.8",
-    "react-dom": "^19.2.8",
-    "react-router-dom": "^7.18.2"
+    "react-dom": "^19.2.8"
   }
 }
